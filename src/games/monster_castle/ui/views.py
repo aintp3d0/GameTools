@@ -36,19 +36,15 @@ if not os.path.isdir(MC_USER_IMAGE_FOLDER):
   os.makedirs(MC_USER_IMAGE_FOLDER)
 
 
-def login_required(func):
-  @functools.wraps
-  def wrapper(*args, **kwargs):
-    image_hash = session.get(MC_USER_LOGIN_FLAG)
+def logged_in():
+  image_hash = session.get(MC_USER_LOGIN_FLAG)
 
-    if all((image_hash is not None,
-            isinstance(image_hash, str),
-            get_user_by_image_hash(image_hash) is not None)):
-      return func(*args, **kwargs)
+  if all((image_hash is not None,
+          isinstance(image_hash, str),
+          get_user_by_image_hash(image_hash) is not None)):
+    return True
 
-    return redirect(url_for('monster_castle.login'))
-
-  return wrapper
+  return False
 
 
 # TODO: remove, use random hash instead
@@ -120,6 +116,9 @@ def validate_user_credentials(file) -> Dict[str, Union[int, str]]:
 def login():
   """Simple login page with mc_user image
   """
+  if logged_in():
+    return redirect(url_for('monster_castle.index'))
+
   form = MC_User_Form(meta={'csrf': False})
 
   if form.validate_on_submit():
@@ -133,17 +132,26 @@ def login():
   return render_template('login.html', form=form)
 
 
-# @login_required
+@monster_castle.route('/logout', methods=['GET'])
+def logout():
+  if logged_in():
+    del session[MC_USER_LOGIN_FLAG]
+
+  return redirect(url_for('monster_castle.login'))
+
+
 @monster_castle.route('/')
 def index():
   """
   Registered Users    (accounts)
   Registered Guilds   ()
   """
+  if not logged_in():
+    return redirect(url_for('monster_castle.login'))
+
   return render_template('index.html')
 
 
-# @login_required
 @monster_castle.route('/guild')
 def guild():
   return f"guild:: {MC_User.object.query.all()}"
