@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# vim
+*.swp
+
+# test static files
+static/
+
 # C extensions
 *.so
 
