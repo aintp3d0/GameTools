@@ -80,6 +80,9 @@ class UserCredentials:
     text_open_id = text_open_id.strip()
     return None if not text_open_id.isdigit() else text_open_id
 
+  def save_credential_image(self, image_path: str, image: numpy.ndarray) -> None:
+    cv2.imwrite(image_path, image)
+
 
 def _test():
   from helper import show_image
@@ -90,6 +93,7 @@ def _test():
   show_image(image_openid)
   text_openid = uc.validate_image_openid(image_openid)
   print('OPEN_ID:', text_openid)
+  uc.save_credential_image(os.path.join('static', 'openid') + '.jpg', image_openid)
 
 
 if __name__ == '__main__':
