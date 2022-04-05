@@ -14,6 +14,9 @@ def load_user(user_id):
 with game_tools.app_context():
   game_tools.register_blueprint(monster_castle, url_prefix='/monster_castle')
 
+  sqldb.create_all()
+  sqldb.session.commit()
+
 
 if __name__ == '__main__':
   game_tools.run(debug=True)

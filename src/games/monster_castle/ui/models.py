@@ -1,13 +1,16 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 from ui.app import sqldb
 
 
 class MC_User(sqldb.Model):
-  # TODO: flag, openID, guild.id
+  __tablename__ = 'MC_User'
+
+  # TODO
+  # - flag
+  # - guild.id
+  # - fixed strings length
   id = sqldb.Column(sqldb.Integer, primary_key=True)
-  image_path = sqldb.Column(sqldb.String(50), nullable=False)
+  openid = sqldb.Column(sqldb.String(20), nullable=False)
+  username = sqldb.Column(sqldb.String(50))
   image_hash = sqldb.Column(sqldb.String(32), nullable=False)
 
 

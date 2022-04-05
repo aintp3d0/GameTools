@@ -1,6 +1,7 @@
 import os
 import hashlib
 import functools
+from typing import Union, List, Dict
 
 from flask import (
   Blueprint, render_template,
@@ -12,7 +13,9 @@ from werkzeug.utils import secure_filename
 from ..src.user.login import UserCredentials
 
 from .models import MC_User
-from .query import get_user_by_image_hash
+from .query import (
+  get_user_by_image_hash, get_user_by_openid, update_user_credentials
+)
 from .forms import MC_User_Form
 
 
@@ -48,6 +51,7 @@ def login_required(func):
   return wrapper
 
 
+# TODO: remove, use random hash instead
 def get_image_hash(image_path: str):
   # SEE: https://www.adamsmith.haus/python/answers/how-to-generate-an-md5-hash-for-large-files-in-python
   md5 = hashlib.md5()
@@ -63,6 +67,55 @@ def get_image_hash(image_path: str):
   return md5.hexdigest()
 
 
+def validate_user_credentials(file) -> Dict[str, Union[int, str]]:
+  file_path = os.path.join(MC_USER_IMAGE_FOLDER, secure_filename(file.filename))
+  file.save(file_path)
+  file_extension = os.path.splitext(file.filename)[-1]
+
+  uc = UserCredentials(file_path)
+  image_username, image_openid = uc.get_username_and_openid()
+  text_openid = uc.validate_image_openid(image_openid)
+
+  def remove_exist(file_path: str):
+    if os.path.exists(file_path):
+      os.remove(file_path)
+
+  if text_openid is None:
+    remove_exist(file_path)
+    return {'error': 1, 'message': 'Invalid OpenID'}
+
+  image_hash = get_image_hash(file_path)
+  image_path = os.path.join(MC_USER_IMAGE_FOLDER, image_hash)
+
+  def openid_and_username_filepath(image_path: str) -> List[str]:
+    return [
+      '_'.join((image_path, add_extension(i))) for i in ('openid', 'username')
+    ]
+
+  def add_extension(file_path: str) -> str:
+    return file_path + file_extension
+
+  image_openid_path, image_username_path = openid_and_username_filepath(image_path)
+
+  uc.save_credential_image(image_openid_path, image_openid)
+  uc.save_credential_image(image_username_path, image_username)
+
+  user_credentials = get_user_by_openid(text_openid)
+
+  if user_credentials is not None:
+    if image_hash != user_credentials.image_hash:
+      prev_image_path = os.path.join(MC_USER_IMAGE_FOLDER, user_credentials.image_hash)
+      image_openid_path, image_username_path = openid_and_username_filepath(prev_image_path)
+
+      remove_exist(prev_image_path)
+      remove_exist(image_openid_path)
+      remove_exist(image_username_path)
+
+  os.rename(file_path, add_extension(image_path))
+
+  return {'image_hash': image_hash, 'openid': text_openid}
+
+
 @monster_castle.route('/login', methods=['GET', 'POST'])
 def login():
   """Simple login page with mc_user image
@@ -70,23 +123,12 @@ def login():
   form = MC_User_Form(meta={'csrf': False})
 
   if form.validate_on_submit():
-    file = form.image.data
-    file_path = os.path.join(MC_USER_IMAGE_FOLDER, secure_filename(file.filename))
-    file.save(file_path)
+    validation_status = validate_user_credentials(form.image.data)
 
-    # changed image with the same name
-    uc = UserCredentials(file_path)
-    uc.save(file_path)
-
-    # hash for the changed image
-    file_hash = get_image_hash(file_path)
-    new_file_path = os.path.join(os.path.dirname(file_path), file_hash)
-
-    os.rename(file_path, new_file_path)
-
-    session[MC_USER_LOGIN_FLAG] = file_hash
-
-    return redirect(url_for('monster_castle.index'))
+    if validation_status.get('error') is None:
+      session[MC_USER_LOGIN_FLAG] = validation_status.get('image_hash')
+      update_user_credentials(validation_status)
+      return redirect(url_for('monster_castle.index'))
 
   return render_template('login.html', form=form)
 
