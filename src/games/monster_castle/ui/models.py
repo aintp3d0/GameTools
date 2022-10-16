@@ -2,8 +2,6 @@ from ui.app import sqldb
 
 
 class MC_User(sqldb.Model):
-  __tablename__ = 'MC_User'
-
   # TODO
   # - flag
   # - guild.id

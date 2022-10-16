@@ -12,9 +12,9 @@ from werkzeug.utils import secure_filename
 
 from ..src.user.login import UserCredentials
 
-from .models import MC_User
 from .query import (
-  get_user_by_image_hash, get_user_by_openid, update_user_credentials
+  get_user_by_image_hash, get_user_by_openid, update_user_credentials,
+  get_all_users,
 )
 from .forms import MC_User_Form
 
@@ -154,4 +154,4 @@ def index():
 
 @monster_castle.route('/guild')
 def guild():
-  return f"guild:: {MC_User.object.query.all()}"
+  return f"<h1>guild:: {get_all_users()}</h1>"

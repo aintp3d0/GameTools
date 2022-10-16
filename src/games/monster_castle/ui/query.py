@@ -26,3 +26,7 @@ def update_user_credentials(credentials: dict):
 
   MC_User.query.filter_by(openid=credentials.get('openid')).update(credentials)
   sqldb.session.commit()
+
+
+def get_all_users():
+  return MC_User.query.all()
